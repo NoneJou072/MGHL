@@ -4,7 +4,6 @@ import numpy as np
 import torch
 import argparse
 from torch.utils.tensorboard import SummaryWriter
-from utils.normalization import Normalization
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 print('CUDA version:', torch.version.cuda)  # 打印CUDA版本
