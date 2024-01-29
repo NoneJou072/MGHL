@@ -61,15 +61,23 @@ class HERDDPGModel(ModelBase):
 
     def play(self):
         """ 测试 """
+        up_flag = False
         self.env.env.TASK_FLAG = 0
         obs, info = self.env.reset()
+        task = 0
         for i in range(self.args.max_train_steps):
             obs['desired_goal'][:3] *= 0
-            if info['is_drawer_success'] == 1.0:
+            if info['is_drawer_success'] == 1.0 or task == 1:
+                task = 1
+                if not up_flag:
+                    for _ in range(10):
+                        a = np.array([0.0, 0.0, 1.0, 0.0])
+                        self.env.step(a)
+                    up_flag = True
                 self.env.env.TASK_FLAG = 1
                 obs['observation'][11:20] = np.zeros(9)
                 obs['desired_goal'][3:6] *= 0
-            else:
+            elif info['is_drawer_success'] == 0.0 and task == 0:
                 self.env.env.TASK_FLAG = 0
                 obs['observation'][20:35] = np.zeros(15)
                 obs['desired_goal'][6:9] *= 0
@@ -85,7 +93,9 @@ class HERDDPGModel(ModelBase):
             time.sleep(0.01)
             if i % 100 == 0:
                 self.env.env.TASK_FLAG = 0
-                obs, _ = self.env.reset()
+                obs, info = self.env.reset()
+                up_flag = False
+                task = 0
 
         self.env.close()
 

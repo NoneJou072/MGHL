@@ -48,7 +48,7 @@ class IORLModel(ModelBase):
     def __init__(self, env, args):
         super().__init__(env, args)
         self.agent = IORL(env, args)
-        self.model_name = f'{self.agent.agent_name}_{self.args.env_name}_num_{4}_seed_{self.args.seed}'
+        self.model_name = f'{self.agent.agent_name}_{self.args.env_name}_num_{5}_seed_{self.args.seed}'
         self.random_steps = args.random_steps
         self.update_freq = args.update_freq
         self.max_train_steps = args.max_train_steps
@@ -145,7 +145,7 @@ class IORLModel(ModelBase):
                 if not os.path.exists(model_dir):
                     os.makedirs(model_dir)
                 total_success_rate = success_rate_drawer + success_rate_place
-                if total_success_rate > self.best_total_success_rate:
+                if total_success_rate >= self.best_total_success_rate:
                     self.best_total_success_rate = total_success_rate
                     torch.save(self.agent.actor.state_dict(), os.path.join(model_dir, f'{self.model_name}.pth'))
         print("完成训练！")
