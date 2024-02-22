@@ -14,7 +14,7 @@ log_path = os.path.join(local_path, 'log')
 
 
 class ModelBase(object):
-    def __init__(self, env: gym.Env, args: argparse.Namespace):
+    def __init__(self, env, args: argparse.Namespace):
         self.args = args
         self.env = env
         self.env_evaluate = env

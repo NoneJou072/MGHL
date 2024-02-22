@@ -39,7 +39,6 @@ def args():
                         help="Take the random actions in the beginning for the better exploration")
     parser.add_argument("--update_freq", type=int, default=100, help="Take 50 steps,then update the networks 50 times")
     parser.add_argument("--k_future", type=int, default=4, help="Her k future")
-    parser.add_argument("--sigma", type=int, default=0.2, help="The std of Gaussian noise for exploration")
     parser.add_argument("--k_update", type=bool, default=2, help="Delayed policy update frequence")
 
     return parser.parse_args()
@@ -106,7 +105,7 @@ class IORLModel(ModelBase):
             traj_reach = Trajectory()
             for transition in traj_draw.buffer:
                 traj_reach.push(transition)
-                reached = self.agent.check_reached(transition[6][:3], transition[5][:3], th=0.03)
+                reached = self.agent.check_reached(transition[6][:3], transition[5][:3], th=0.02)
                 if reached:
                     break
             self.agent.memory_draw.push(traj_draw)
@@ -115,7 +114,7 @@ class IORLModel(ModelBase):
             traj_reach = Trajectory()
             for transition in traj_door.buffer:
                 traj_reach.push(transition)
-                reached = self.agent.check_reached(transition[6][:3], transition[5][:3], th=0.03)
+                reached = self.agent.check_reached(transition[6][:3], transition[5][:3], th=0.02)
                 if reached:
                     break
             self.agent.memory_door.push(traj_door)
@@ -188,20 +187,12 @@ def make_env(args):
     env = LockedCabinetEnv(render_mode=None)
     env = GoalEnvWrapper(env)
 
-    state_dim = env.observation_space.spaces["observation"].shape[0]
-    action_dim = env.action_space.shape[0]
-    goal_dim = env.observation_space.spaces["desired_goal"].shape[0]
-    max_action = float(env.action_space.high[0])
-    min_action = float(env.action_space.low[0])
-
-    print(f"state dim:{state_dim}, action dim:{action_dim}, max_epi_steps:{env.max_episode_steps}")
-    print(f"max action:{max_action}, min action:{min_action}")
-
-    setattr(args, 'state_dim', state_dim)
-    setattr(args, 'action_dim', action_dim)
-    setattr(args, 'goal_dim', goal_dim)
+    setattr(args, 'state_dim', env.observation_space.spaces["observation"].shape[0])
+    setattr(args, 'action_dim', env.action_space.shape[0])
+    setattr(args, 'goal_dim', env.observation_space.spaces["desired_goal"].shape[0])
     setattr(args, 'max_episode_steps', env.max_episode_steps)
-    setattr(args, 'max_action', max_action)
+    setattr(args, 'min_action', float(env.action_space.low[0]))
+    setattr(args, 'max_action', float(env.action_space.high[0]))
 
     return env
 

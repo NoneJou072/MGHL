@@ -8,8 +8,9 @@ from rher_buffer import RHERReplayBuffer
 
 
 class Actor(nn.Module):
-    def __init__(self, state_dim, goal_dim, action_dim, hidden_dim, max_action):
+    def __init__(self, state_dim, goal_dim, action_dim, hidden_dim, min_action, max_action):
         super(Actor, self).__init__()
+        self.min_action = min_action
         self.max_action = max_action
         self.fc1 = nn.Linear(state_dim + goal_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, hidden_dim)
@@ -25,7 +26,7 @@ class Actor(nn.Module):
         a = F.relu(self.fc2(a))
         a = F.relu(self.fc3(a))
         a = F.relu(self.fc4(a))
-        # 将网络输出的 action 规范在 (-max_action， max_action) 之间
+
         mean = self.fc5(a)
         log_std = self.log_std.expand_as(mean)  # To make 'log_std' have the same dimension as 'mean'
         std = torch.exp(log_std)  # The reason we train the 'log_std' is to ensure std=exp(log_std)>0
@@ -85,7 +86,6 @@ class Critic(nn.Module):
 
 class IORL:
     def __init__(self, env, args):
-        self.sigma = args.sigma
         self.agent_name = args.algo_name
         self.device = torch.device(args.device)
         self.gamma = args.gamma  # 奖励的折扣因子
@@ -102,6 +102,7 @@ class IORL:
         self.goal_dim = args.goal_dim
         self.action_dim = args.action_dim
         self.hidden_dim = args.hidden_dim
+        self.min_action = args.min_action
         self.max_action = args.max_action
 
         self.target_entropy = -self.action_dim
@@ -110,12 +111,12 @@ class IORL:
         self.alpha = self.log_alpha.exp().to(self.device)
         self.alpha_optimizer = torch.optim.Adam([self.log_alpha], args.lr)
 
-        self.actor = Actor(self.state_dim, self.goal_dim, self.action_dim, self.hidden_dim, self.max_action).to(self.device)
+        self.actor = Actor(self.state_dim, self.goal_dim, self.action_dim, self.hidden_dim, self.min_action, self.max_action).to(self.device)
         self.critic = Critic(self.state_dim, self.goal_dim, self.action_dim, self.hidden_dim).to(self.device)
         self.critic_target = copy.deepcopy(self.critic)
 
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=args.lr)  # 优化器
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=args.lr)  # 优化器
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=args.lr)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=args.lr)
 
         self.critic_loss_record = None
         self.actor_loss_record = None
@@ -140,7 +141,7 @@ class IORL:
     def sample_action(self, s, task, deterministic=False):
 
         last_obs = copy.deepcopy(s)
-        reached = self.check_reached(last_obs['achieved_goal'][:3], last_obs['desired_goal'][:3], th=0.03 if task=='unlock' else 0.03)
+        reached = self.check_reached(last_obs['achieved_goal'][:3], last_obs['desired_goal'][:3], th=0.02 if task=='unlock' else 0.02)
 
         if not deterministic:
             if not reached and self.enable_guide:
