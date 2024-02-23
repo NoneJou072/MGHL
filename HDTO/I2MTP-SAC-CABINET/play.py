@@ -46,7 +46,7 @@ class HERDDPGModel(ModelBase):
     def __init__(self, env, args):
         super().__init__(env, args)
         self.agent = IORL(env, args)
-        self.model_name = f'{self.agent.agent_name}_{self.args.env_name}_num_{4}_seed_{self.args.seed}'
+        self.model_name = f'{self.agent.agent_name}_{self.args.env_name}_num_{5}_seed_{self.args.seed}'
         self.load_weights()
 
     def load_weights(self):
@@ -57,7 +57,7 @@ class HERDDPGModel(ModelBase):
 
     def play(self):
         for ep in range(self.args.max_test_episodes):
-            self.env.env.TASK_FLAG = 0
+            self.env.env.TASK_FLAG = 1
             obs, info = self.env.reset()
             for _ in range(self.env.env.max_episode_steps):
                 obs['desired_goal'][:3] *= 0
