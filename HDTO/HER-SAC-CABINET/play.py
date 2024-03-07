@@ -3,8 +3,9 @@ import time
 import argparse
 
 import torch
-from robopal.demos.multi_task_manipulation import LockedCabinetEnv
+from robopal.demos.manipulation_tasks.demo_cabinet import LockedCabinetEnv
 from robopal.commons.gym_wrapper import GoalEnvWrapper
+from tqdm import trange
 
 from utils.ModelBase import ModelBase
 from iorl import IORL
@@ -20,7 +21,7 @@ def args():
     parser.add_argument("--seed", type=int, default=10, help="random seed")
     parser.add_argument("--device", type=str, default='cuda:0', help="pytorch device")
     # Training Params
-    parser.add_argument("--max_train_steps", type=int, default=int(2e6), help=" Maximum number of training steps")
+    parser.add_argument("--max_test_episodes", type=int, default=int(1e2), help=" Maximum number of training steps")
     parser.add_argument("--evaluate_freq", type=float, default=2e3,
                         help="Evaluate the policy every 'evaluate_freq' steps")
     parser.add_argument("--save_freq", type=int, default=5, help="Save frequency")
@@ -57,35 +58,36 @@ class HERDDPGModel(ModelBase):
         self.agent.actor.load_state_dict(actor_state_dict)
 
     def play(self):
-        self.env.env.TASK_FLAG = 0
-        obs, info = self.env.reset()
-        for _ in range(self.args.max_train_steps):
+        success_count = 0
+        for ep in trange(self.args.max_test_episodes):
+            self.env.env.TASK_FLAG = 1
+            obs, info = self.env.reset()
+            for _ in range(50):
 
-            obs['desired_goal'][:3] *= 0
-            if info['is_unlock_success'] == 0.0:
-                obs['desired_goal'][6:9] *= 0
-            else:
+                obs['desired_goal'][:3] *= 0
                 obs['desired_goal'][3:6] *= 0
 
-            # obs['desired_goal'][3:] *= 0
+                # if info['is_unlock_success'] == 0.0:
+                #     obs['desired_goal'][6:9] *= 0
+                # else:
+                #     obs['desired_goal'][3:6] *= 0
 
-            s = torch.unsqueeze(torch.tensor(obs['observation'], dtype=torch.float32), 0).to(self.agent.device)
-            g = torch.unsqueeze(torch.tensor(obs['desired_goal'], dtype=torch.float32), 0).to(self.agent.device)
-            a, _ = self.agent.actor(s, g, deterministic=True)
-            a = a.detach().cpu().numpy().flatten()
-            # a = self.agent.sample_action(obs, deterministic=True)
-            obs, r, terminated, truncated, info = self.env.step(a)
+                s = torch.unsqueeze(torch.tensor(obs['observation'], dtype=torch.float32), 0).to(self.agent.device)
+                g = torch.unsqueeze(torch.tensor(obs['desired_goal'], dtype=torch.float32), 0).to(self.agent.device)
+                a, _ = self.agent.actor(s, g, deterministic=True)
+                a = a.detach().cpu().numpy().flatten()
+                # a = self.agent.sample_action(obs, deterministic=True)
+                obs, r, terminated, truncated, info = self.env.step(a)
 
-            time.sleep(0.03)
-            if truncated:
-                obs, _ = self.env.reset()
+            success_count += info['is_door_success']
 
+        print(success_count)
         self.env.close()
 
 
 def make_env(args):
     """ 配置环境 """
-    env = LockedCabinetEnv(render_mode='human')
+    env = LockedCabinetEnv(render_mode=None)
     env = GoalEnvWrapper(env)
     state_dim = env.observation_space.spaces["observation"].shape[0]
     action_dim = env.action_space.shape[0]

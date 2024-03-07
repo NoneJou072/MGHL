@@ -117,6 +117,7 @@ class IORL:
             if not reached and self.enable_guide:
                 last_obs['desired_goal'][3:] *= 0
             else:
+                self.enable_guide = False
                 last_obs['desired_goal'][:3] *= 0
                 if task == 'unlock':
                     last_obs['desired_goal'][6:] *= 0

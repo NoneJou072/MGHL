@@ -77,19 +77,19 @@ class RHERReplayBuffer(ReplayBuffer):
         elif task == 'red':
             future_ag = []
             for epi, f_offset in zip(ep_indices[her_indices], future_t):
-                future_ag.append(dc(self.buffer[epi].buffer[f_offset][4][3:6]))
+                future_ag.append(dc(self.buffer[epi].buffer[f_offset][4][3:]))
             future_ag = np.vstack(future_ag)
-            desired_goals[her_indices, 3:6] = future_ag
-            rewards = np.expand_dims(self.env.compute_reward(achieved_goals[:, 3:6], desired_goals[:, 3:6], th=0.02), 1)
+            desired_goals[her_indices, 3:] = future_ag
+            rewards = np.expand_dims(self.env.compute_reward(achieved_goals[:, 3:], desired_goals[:, 3:], th=0.02), 1)
             desired_goals[:, :3] *= 0
             desired_goals[:, 6:] *= 0
         elif task == 'green':
             future_ag = []
             for epi, f_offset in zip(ep_indices[her_indices], future_t):
-                future_ag.append(dc(self.buffer[epi].buffer[f_offset][4][3:9]))
+                future_ag.append(dc(self.buffer[epi].buffer[f_offset][4][3:]))
             future_ag = np.vstack(future_ag)
-            desired_goals[her_indices, 3:9] = future_ag
-            rewards = np.expand_dims(self.env.compute_reward(achieved_goals[:, 3:9], desired_goals[:, 3:9], th=0.02), 1)
+            desired_goals[her_indices, 3:] = future_ag
+            rewards = np.expand_dims(self.env.compute_reward(achieved_goals[:, 3:], desired_goals[:, 3:], th=0.02), 1)
             desired_goals[:, :6] *= 0
             desired_goals[:, 9:] *= 0
         elif task == 'blue':

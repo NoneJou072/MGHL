@@ -7,7 +7,7 @@ from torch.utils.tensorboard import SummaryWriter
 from iorl import IORL
 from utils.ModelBase import ModelBase
 from utils.replay_buffer import Trajectory
-from robopal.demos.multi_task_manipulation import MultiCubes
+from robopal.demos.manipulation_tasks.demo_multi_cubes import MultiCubes
 from robopal.commons.gym_wrapper import GoalEnvWrapper
 
 local_path = os.path.dirname(__file__)
@@ -32,7 +32,7 @@ def args():
     # Net Params
     parser.add_argument("--hidden_dim", type=int, default=512,
                         help="The number of neurons in hidden layers of the neural network")
-    parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
+    parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
     parser.add_argument("--gamma", type=float, default=0.96, help="Discount factor")
     parser.add_argument("--tau", type=float, default=0.05, help="Softly update the target network")
     parser.add_argument("--k_future", type=int, default=4, help="Her k future")
@@ -44,7 +44,7 @@ class IORLModel(ModelBase):
     def __init__(self, env, args):
         super().__init__(env, args)
         self.agent = IORL(env, args)
-        self.model_name = f'{self.agent.agent_name}_{self.args.env_name}_num_{3}_seed_{self.args.seed}'
+        self.model_name = f'{self.agent.agent_name}_{self.args.env_name}_num_{6}_seed_{self.args.seed}'
         self.random_steps = args.random_steps
         self.update_freq = args.update_freq
         self.max_train_steps = args.max_train_steps
@@ -66,7 +66,7 @@ class IORLModel(ModelBase):
 
         while total_steps < self.max_train_steps:
             # Task1
-            self.env.env.TASK_FLAG = 0
+            self.env.env.task = 'red'
             obs, _ = self.env.reset()
             traj_red = Trajectory()
             self.agent.enable_guide = True
@@ -82,7 +82,7 @@ class IORLModel(ModelBase):
                     break
 
             # Task2
-            self.env.env.TASK_FLAG = 1
+            self.env.env.task = 'green'
             obs, _ = self.env.reset()
             traj_green = Trajectory()
             self.agent.enable_guide = True
@@ -98,7 +98,7 @@ class IORLModel(ModelBase):
                     break
 
             # Task3
-            self.env.env.TASK_FLAG = 2
+            self.env.env.task = 'blue'
             obs, _ = self.env.reset()
             traj_blue = Trajectory()
             self.agent.enable_guide = True
@@ -168,7 +168,7 @@ class IORLModel(ModelBase):
                 if not os.path.exists(model_dir):
                     os.makedirs(model_dir)
                 total_success_rate = success_rate_red + success_rate_green + success_rate_blue
-                if total_success_rate > self.best_total_success_rate:
+                if total_success_rate >= self.best_total_success_rate:
                     self.best_total_success_rate = total_success_rate
                     torch.save(self.agent.actor.state_dict(), os.path.join(model_dir, f'{self.model_name}.pth'))
 
@@ -178,7 +178,7 @@ class IORLModel(ModelBase):
     def evaluate_policy(self):
         times = 10
         # evaluate unlock stage
-        self.env.env.TASK_FLAG = 0
+        self.env.env.task = 'red'
         success_rate_red = 0
         for _ in range(times):
             obs, _ = self.env_evaluate.reset()
@@ -192,7 +192,7 @@ class IORLModel(ModelBase):
                     break
 
         # evaluate door stage
-        self.env.env.TASK_FLAG = 1
+        self.env.env.task = 'green'
         success_rate_green = 0
         for _ in range(times):
             obs, _ = self.env_evaluate.reset()
@@ -204,7 +204,7 @@ class IORLModel(ModelBase):
                     break
 
         # evaluate door stage
-        self.env.env.TASK_FLAG = 2
+        self.env.env.task = 'blue'
         success_rate_blue = 0
         for _ in range(times):
             obs, _ = self.env_evaluate.reset()

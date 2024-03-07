@@ -96,7 +96,6 @@ class IORL:
         self.batch_size = args.batch_size
         self.memory_draw = RHERReplayBuffer(capacity=args.buffer_size, k_future=args.k_future, env=env)
         self.memory_door = RHERReplayBuffer(capacity=args.buffer_size, k_future=args.k_future, env=env)
-        self.memory_reach = RHERReplayBuffer(capacity=args.buffer_size, k_future=args.k_future, env=env)
 
         self.state_dim = args.state_dim
         self.goal_dim = args.goal_dim
@@ -119,22 +118,6 @@ class IORL:
 
         self.critic_loss_record = None
         self.actor_loss_record = None
-
-    def check_reached(self, gg, ag, th=0.05):
-        """ Check if the gripper has reached the goal position.
-        :param gg: goal position
-        :param ag: actual position
-        :param reward_func: reward function
-        :param th: threshold
-        :return: True if reached, False otherwise
-        """
-        grip2obj = np.linalg.norm(gg - ag)
-
-        if grip2obj > th:
-            reached = False
-        else:
-            reached = True
-        return reached
 
     def sample_action(self, s, task, deterministic=False):
 

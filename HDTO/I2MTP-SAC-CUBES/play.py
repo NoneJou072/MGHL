@@ -8,7 +8,7 @@ from tqdm import trange
 from utils.ModelBase import ModelBase
 from iorl import IORL
 
-from robopal.demos.multi_task_manipulation import MultiCubes
+from robopal.demos.manipulation_tasks.demo_multi_cubes import MultiCubes
 from robopal.commons.gym_wrapper import GoalEnvWrapper
 
 local_path = os.path.dirname(__file__)
@@ -22,7 +22,7 @@ def args():
     parser.add_argument("--seed", type=int, default=10, help="random seed")
     parser.add_argument("--device", type=str, default='cuda:0', help="pytorch device")
     # Training Params
-    parser.add_argument("--max_test_steps", type=int, default=int(1.5e4), help=" Maximum number of training steps")
+    parser.add_argument("--max_test_episodes", type=int, default=int(1e2), help=" Maximum number of training steps")
     parser.add_argument("--update_freq", type=int, default=150, help="Take 150 steps,then update the networks 50 times")
     parser.add_argument("--buffer_size", type=int, default=int(1e6), help="Reply buffer size")
     parser.add_argument("--batch_size", type=int, default=256, help="Minibatch size")
@@ -41,7 +41,7 @@ class HERDDPGModel(ModelBase):
     def __init__(self, env, args):
         super().__init__(env, args)
         self.agent = IORL(env, args)
-        self.model_name = f'{self.agent.agent_name}_{self.args.env_name}_num_{3}_seed_{self.args.seed}'
+        self.model_name = f'{self.agent.agent_name}_{self.args.env_name}_num_{6}_seed_{self.args.seed}'
         self.load_weights()
 
     def load_weights(self):
@@ -51,34 +51,29 @@ class HERDDPGModel(ModelBase):
         self.agent.actor.load_state_dict(actor_state_dict)
 
     def play(self):
-        success_ep = 0
-        task = 'red'
-        self.env.env.TASK_FLAG = 0
-        obs, info = self.env.reset()
-        for t in trange(self.args.max_test_steps):
+        success = 0
+        for ep in trange(self.args.max_test_episodes):
+            self.env.env.task = 'red'
+            obs, info = self.env.reset()
+            for t in range(150):
 
-            a = self.agent.sample_action(obs, task=task, deterministic=True)
-            obs, r, terminated, truncated, info = self.env.step(a)
+                if info['is_red_success'] == 1.0 and self.env.env.task == 'red':
+                    for _ in range(10):
+                        a = np.array([0.0, 0.0, 1.0, 1.0])
+                        obs, r, terminated, truncated, info = self.env.step(a)
+                    self.env.env.task = 'green'
 
-            if info['is_red_success'] == 1.0 and task == 'red':
-                for _ in range(10):
-                    a = np.array([0.0, 0.0, 1.0, 1.0])
-                    obs, r, terminated, truncated, info = self.env.step(a)
-                task = 'green'
+                if info['is_red_success'] == 1.0 and info['is_green_success'] == 1.0 and self.env.env.task == 'green':
+                    for _ in range(10):
+                        a = np.array([0.0, 0.0, 1.0, 1.0])
+                        obs, r, terminated, truncated, info = self.env.step(a)
+                    self.env.env.task = 'blue'
 
-            if info['is_red_success'] == 1.0 and info['is_green_success'] == 1.0 and task == 'green':
-                for _ in range(10):
-                    a = np.array([0.0, 0.0, 1.0, 1.0])
-                    obs, r, terminated, truncated, info = self.env.step(a)
-                task = 'blue'
-
-            if t % 150 == 0:
-                if info['is_red_success'] == 1.0 and info['is_green_success'] == 1.0 and info['is_blue_success'] == 1.0:
-                    success_ep += 1
-                task = 'red'
-                self.env.env.TASK_FLAG = 0
-                obs, _ = self.env.reset()
-        print(success_ep)
+                a = self.agent.sample_action(obs, task=self.env.env.task, deterministic=True)
+                obs, r, terminated, truncated, info = self.env.step(a)
+            if info['is_red_success'] == 1.0 and info['is_green_success'] == 1.0 and info['is_blue_success'] == 1.0:
+                success += 1
+        print(success)
         self.env.close()
 
 
@@ -97,7 +92,6 @@ def make_env(args):
     setattr(args, 'goal_dim', goal_dim)
     setattr(args, 'max_episode_steps', env.max_episode_steps)
     setattr(args, 'max_action', max_action)
-    setattr(args, 'sigma', 0.2)  # The std of Gaussian noise for exploration
 
     return env
 

@@ -7,7 +7,7 @@ from utils.ModelBase import ModelBase
 
 from iorl import IORL
 import argparse
-from robopal.demos.multi_task_manipulation import DrawerCubeEnv
+from robopal.demos.manipulation_tasks.demo_cube_drawer import DrawerCubeEnv
 from robopal.commons.gym_wrapper import GoalEnvWrapper
 
 local_path = os.path.dirname(__file__)

@@ -4,11 +4,11 @@ import time
 import numpy as np
 import torch
 from utils.ModelBase import ModelBase
-
+from tqdm import trange
 from iorl import IORL
 import argparse
 
-from robopal.demos.multi_task_manipulation import DrawerCubeEnv
+from robopal.demos.manipulation_tasks.demo_cube_drawer import DrawerCubeEnv
 from robopal.commons.gym_wrapper import GoalEnvWrapper
 
 local_path = os.path.dirname(__file__)
@@ -50,7 +50,7 @@ class HERDDPGModel(ModelBase):
     def __init__(self, env, args):
         super().__init__(env, args)
         self.agent = IORL(env, args)
-        self.model_name = f'{self.agent.agent_name}_{self.args.env_name}_num_{4}_seed_{self.args.seed}'
+        self.model_name = f'{self.agent.agent_name}_{self.args.env_name}_num_{6}_seed_{self.args.seed}'
         self.load_weights()
 
     def load_weights(self):
@@ -61,48 +61,38 @@ class HERDDPGModel(ModelBase):
 
     def play(self):
         """ 测试 """
-        up_flag = False
-        self.env.env.TASK_FLAG = 0
-        obs, info = self.env.reset()
-        task = 0
-        for i in range(self.args.max_train_steps):
-            obs['desired_goal'][:3] *= 0
-            if info['is_drawer_success'] == 1.0 or task == 1:
-                task = 1
-                if not up_flag:
-                    for _ in range(10):
-                        a = np.array([0.0, 0.0, 1.0, 0.0])
-                        self.env.step(a)
-                    up_flag = True
+        success = 0
+        for ep in trange(100):
+            task = 0
+            self.env.env.TASK_FLAG = 1
+            obs, info = self.env.reset()
+            for i in range(50):
+                obs['desired_goal'][:3] *= 0
+                # if info['is_drawer_success'] == 1.0 or task == 1:
+                #     task = 1
+                #     self.env.env.TASK_FLAG = 1
+                #     obs['desired_goal'][3:6] *= 0
+                # elif info['is_drawer_success'] == 0.0 and task == 0:
                 self.env.env.TASK_FLAG = 1
-                obs['observation'][11:20] = np.zeros(9)
+                # obs['desired_goal'][6:9] *= 0
                 obs['desired_goal'][3:6] *= 0
-            elif info['is_drawer_success'] == 0.0 and task == 0:
-                self.env.env.TASK_FLAG = 0
-                obs['observation'][20:35] = np.zeros(15)
-                obs['desired_goal'][6:9] *= 0
-            # obs['desired_goal'][3:6] *= 0
 
-            s = torch.unsqueeze(torch.tensor(obs['observation'], dtype=torch.float32), 0).to(self.agent.device)
-            g = torch.unsqueeze(torch.tensor(obs['desired_goal'], dtype=torch.float32), 0).to(self.agent.device)
-            a, _ = self.agent.actor(s, g, deterministic=True)
-            a = a.detach().cpu().numpy().flatten()
-            # a = self.agent.sample_action(obs, deterministic=True)
-            obs, r, terminated, truncated, info = self.env.step(a)
+                s = torch.unsqueeze(torch.tensor(obs['observation'], dtype=torch.float32), 0).to(self.agent.device)
+                g = torch.unsqueeze(torch.tensor(obs['desired_goal'], dtype=torch.float32), 0).to(self.agent.device)
+                a, _ = self.agent.actor(s, g, deterministic=True)
+                a = a.detach().cpu().numpy().flatten()
+                # a = self.agent.sample_action(obs, deterministic=True)
+                obs, r, terminated, truncated, info = self.env.step(a)
 
-            time.sleep(0.01)
-            if i % 100 == 0:
-                self.env.env.TASK_FLAG = 0
-                obs, info = self.env.reset()
-                up_flag = False
-                task = 0
+            success += info['is_place_success']
 
+        print(success)
         self.env.close()
 
 
 def make_env(args):
     """ 配置环境 """
-    env = DrawerCubeEnv(render_mode="human")
+    env = DrawerCubeEnv(render_mode=None)
     env = GoalEnvWrapper(env)
     state_dim = env.observation_space.spaces["observation"].shape[0]
     action_dim = env.action_space.shape[0]

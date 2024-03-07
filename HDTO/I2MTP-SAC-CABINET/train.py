@@ -48,7 +48,7 @@ class IORLModel(ModelBase):
     def __init__(self, env, args):
         super().__init__(env, args)
         self.agent = IORL(env, args)
-        self.model_name = f'{self.agent.agent_name}_{self.args.env_name}_num_{5}_seed_{self.args.seed}'
+        self.model_name = f'{self.agent.agent_name}_{self.args.env_name}_num_{6}_seed_{self.args.seed}'
         self.random_steps = args.random_steps
         self.update_freq = args.update_freq
         self.max_train_steps = args.max_train_steps

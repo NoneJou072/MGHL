@@ -3,8 +3,9 @@ import time
 import argparse
 
 import torch
-from robopal.demos.multi_task_manipulation import LockedCabinetEnv
+from robopal.demos.manipulation_tasks.demo_cabinet import LockedCabinetEnv
 from robopal.commons.gym_wrapper import GoalEnvWrapper
+from tqdm import trange
 
 from utils.ModelBase import ModelBase
 from iorl import IORL
@@ -46,7 +47,7 @@ class HERDDPGModel(ModelBase):
     def __init__(self, env, args):
         super().__init__(env, args)
         self.agent = IORL(env, args)
-        self.model_name = f'{self.agent.agent_name}_{self.args.env_name}_num_{5}_seed_{self.args.seed}'
+        self.model_name = f'{self.agent.agent_name}_{self.args.env_name}_num_{6}_seed_{self.args.seed}'
         self.load_weights()
 
     def load_weights(self):
@@ -56,37 +57,28 @@ class HERDDPGModel(ModelBase):
         self.agent.actor.load_state_dict(actor_state_dict)
 
     def play(self):
-        for ep in range(self.args.max_test_episodes):
+        success_count = 0
+        for ep in trange(self.args.max_test_episodes):
             self.env.env.TASK_FLAG = 1
+            task = 'door'
             obs, info = self.env.reset()
             for _ in range(self.env.env.max_episode_steps):
-                obs['desired_goal'][:3] *= 0
-                if info['is_unlock_success'] == 0.0:
-                    obs['desired_goal'][6:9] *= 0
-                else:
-                    obs['desired_goal'][3:6] *= 0
-                # obs['desired_goal'][3:] *= 0
 
-                s = torch.unsqueeze(torch.tensor(obs['observation'], dtype=torch.float32), 0).to(self.agent.device)
-                g = torch.unsqueeze(torch.tensor(obs['desired_goal'], dtype=torch.float32), 0).to(self.agent.device)
-                a, _ = self.agent.actor(s, g, deterministic=True)
-                a = a.detach().cpu().numpy().flatten()
+                # if info['is_unlock_success'] == 1.0:
+                #     task = 'door'
 
-                # a = self.agent.sample_action(obs, task='door', deterministic=True)
+                a = self.agent.sample_action(obs, task=task, deterministic=True)
                 obs, r, terminated, truncated, info = self.env.step(a)
 
-                # time.sleep(0.03)
-                if truncated:
-                    break
+            success_count += info['is_door_success']
 
-            print(info)
-
+        print(success_count)
         self.env.close()
 
 
 def make_env(args):
     """ 配置环境 """
-    env = LockedCabinetEnv(render_mode='human')
+    env = LockedCabinetEnv(render_mode=None)
     env = GoalEnvWrapper(env)
 
     setattr(args, 'state_dim', env.observation_space.spaces["observation"].shape[0])

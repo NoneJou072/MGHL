@@ -157,14 +157,17 @@ class IORL:
                 elif task == 'blue':
                     last_obs['desired_goal'][3:9] *= 0
         else:
-            last_obs['desired_goal'][:3] *= 0
-            if task == 'red':
-                last_obs['desired_goal'][6:] *= 0
-            elif task == 'green':
-                last_obs['desired_goal'][3:6] *= 0
-                last_obs['desired_goal'][9:] *= 0
-            elif task == 'blue':
-                last_obs['desired_goal'][3:9] *= 0
+            if task == 'reach':
+                last_obs['desired_goal'][3:] *= 0
+            else:
+                last_obs['desired_goal'][:3] *= 0
+                if task == 'red':
+                    last_obs['desired_goal'][6:] *= 0
+                elif task == 'green':
+                    last_obs['desired_goal'][3:6] *= 0
+                    last_obs['desired_goal'][9:] *= 0
+                elif task == 'blue':
+                    last_obs['desired_goal'][3:9] *= 0
 
         with torch.no_grad():
             s = torch.unsqueeze(torch.tensor(last_obs['observation'], dtype=torch.float32), 0).to(self.device)
