@@ -41,7 +41,8 @@ class HERDDPGModel(ModelBase):
     def __init__(self, env, args):
         super().__init__(env, args)
         self.agent = IORL(env, args)
-        self.model_name = f'{self.agent.agent_name}_{self.args.env_name}_num_{6}_seed_{self.args.seed}'
+        self.model_name = f'{self.agent.agent_name}_{self.args.env_name}_num_{6}_seed_10'
+        # self.model_name = f'{self.agent.agent_name}_{self.args.env_name}_num_{6}_seed_{self.args.seed}'
         self.load_weights()
 
     def load_weights(self):
@@ -53,21 +54,21 @@ class HERDDPGModel(ModelBase):
     def play(self):
         success = 0
         for ep in trange(self.args.max_test_episodes):
-            self.env.env.task = 'red'
+            self.env.env.task = 'blue'
             obs, info = self.env.reset()
-            for t in range(150):
+            for t in range(50):
 
-                if info['is_red_success'] == 1.0 and self.env.env.task == 'red':
-                    for _ in range(10):
-                        a = np.array([0.0, 0.0, 1.0, 1.0])
-                        obs, r, terminated, truncated, info = self.env.step(a)
-                    self.env.env.task = 'green'
-
-                if info['is_red_success'] == 1.0 and info['is_green_success'] == 1.0 and self.env.env.task == 'green':
-                    for _ in range(10):
-                        a = np.array([0.0, 0.0, 1.0, 1.0])
-                        obs, r, terminated, truncated, info = self.env.step(a)
-                    self.env.env.task = 'blue'
+                # if info['is_red_success'] == 1.0 and self.env.env.task == 'red':
+                #     for _ in range(10):
+                #         a = np.array([0.0, 0.0, 1.0, 1.0])
+                #         obs, r, terminated, truncated, info = self.env.step(a)
+                #     self.env.env.task = 'green'
+                #
+                # if info['is_red_success'] == 1.0 and info['is_green_success'] == 1.0 and self.env.env.task == 'green':
+                #     for _ in range(10):
+                #         a = np.array([0.0, 0.0, 1.0, 1.0])
+                #         obs, r, terminated, truncated, info = self.env.step(a)
+                #     self.env.env.task = 'blue'
 
                 a = self.agent.sample_action(obs, task=self.env.env.task, deterministic=True)
                 obs, r, terminated, truncated, info = self.env.step(a)

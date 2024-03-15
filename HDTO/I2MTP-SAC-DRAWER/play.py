@@ -63,26 +63,20 @@ class HERDDPGModel(ModelBase):
         """ 测试 """
         success = 0
         for ep in trange(100):
-            task = 0
-            self.env.env.TASK_FLAG = 1
+            self.env.env.TASK_FLAG = 0
             obs, info = self.env.reset()
-            for i in range(50):
-                obs['desired_goal'][:3] *= 0
-                # if info['is_drawer_success'] == 1.0 or task == 1:
-                #     task = 1
-                #     self.env.env.TASK_FLAG = 1
-                #     obs['desired_goal'][3:6] *= 0
-                # elif info['is_drawer_success'] == 0.0 and task == 0:
-                self.env.env.TASK_FLAG = 1
-                # obs['desired_goal'][6:9] *= 0
-                obs['desired_goal'][3:6] *= 0
+            for i in range(100):
+                if info['is_drawer_success'] == 1.0:
+                    task = 'place'
+                    self.env.env.TASK_FLAG = 1
+                else:
+                    self.env.env.TASK_FLAG = 0
+                    task = 'drawer'
 
-                s = torch.unsqueeze(torch.tensor(obs['observation'], dtype=torch.float32), 0).to(self.agent.device)
-                g = torch.unsqueeze(torch.tensor(obs['desired_goal'], dtype=torch.float32), 0).to(self.agent.device)
-                a, _ = self.agent.actor(s, g, deterministic=True)
-                a = a.detach().cpu().numpy().flatten()
-                # a = self.agent.sample_action(obs, deterministic=True)
+                a = self.agent.sample_action(obs, task, deterministic=True)
                 obs, r, terminated, truncated, info = self.env.step(a)
+                if info['is_place_success'] == 1.0:
+                    break
 
             success += info['is_place_success']
 

@@ -59,18 +59,18 @@ class HERDDPGModel(ModelBase):
     def play(self):
         success_count = 0
         for ep in trange(self.args.max_test_episodes):
-            self.env.env.TASK_FLAG = 1
-            task = 'door'
+            self.env.env.TASK_FLAG = 0
+            task = 'unlock'
             obs, info = self.env.reset()
-            for _ in range(self.env.env.max_episode_steps):
+            for _ in range(100):
 
-                # if info['is_unlock_success'] == 1.0:
-                #     task = 'door'
+                if info['is_unlock_success'] == 1.0:
+                    task = 'door'
 
                 a = self.agent.sample_action(obs, task=task, deterministic=True)
                 obs, r, terminated, truncated, info = self.env.step(a)
 
-            success_count += info['is_door_success']
+            success_count += info['is_door_success'] and info['is_unlock_success']
 
         print(success_count)
         self.env.close()

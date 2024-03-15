@@ -168,7 +168,7 @@ class IORLModel(ModelBase):
 
 def make_env(args):
     """ 配置环境 """
-    env = DrawerCubeEnv(render_mode=None)
+    env = DrawerCubeEnv(render_mode='human')
     env = GoalEnvWrapper(env)
 
     state_dim = env.observation_space.spaces["observation"].shape[0]
