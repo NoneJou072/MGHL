@@ -1,29 +1,33 @@
 import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+
+import time
 import numpy as np
 import torch
+from utils.ModelBase import ModelBase
+from tqdm import trange
+from iorl import IORL
 import argparse
 
-from utils.ModelBase import ModelBase
-from HER.HERDDPG import HERDDPG
-
-from robopal.demos.demo_pick_place import PickAndPlaceEnv
-from robopal.commons.gym_wrapper import GoalEnvWrapper as GymWrapper
+import robopal
+from robopal.wrappers import GoalEnvWrapper
 
 local_path = os.path.dirname(__file__)
-log_path = os.path.join(local_path, 'log')
+log_path = os.path.join(local_path, './log')
 
 
 def args():
-    parser = argparse.ArgumentParser("Hyperparameters Setting for DDPG")
-    parser.add_argument("--env_name", type=str, default="FetchPickAndPlace-v2", help="env name")
-    parser.add_argument("--algo_name", type=str, default="HERDDPG", help="algorithm name")
+    parser = argparse.ArgumentParser("Hyperparameters Setting for RHERTD3")
+    parser.add_argument("--env_name", type=str, default="DrawerBox-v1", help="env name")
+    parser.add_argument("--algo_name", type=str, default="HDTO", help="algorithm name")
     parser.add_argument("--seed", type=int, default=10, help="random seed")
-    parser.add_argument("--device", type=str, default='cpu', help="pytorch device")
+    parser.add_argument("--device", type=str, default='cuda:0', help="pytorch device")
     # Training Params
-    parser.add_argument("--max_train_steps", type=int, default=int(3e5), help=" Maximum number of training steps")
-    parser.add_argument("--evaluate_freq", type=float, default=5e3,
+    parser.add_argument("--max_train_steps", type=int, default=int(2e6), help=" Maximum number of training steps")
+    parser.add_argument("--evaluate_freq", type=float, default=2e3,
                         help="Evaluate the policy every 'evaluate_freq' steps")
-    parser.add_argument("--save_freq", type=int, default=10, help="Save frequency")
+    parser.add_argument("--save_freq", type=int, default=5, help="Save frequency")
     parser.add_argument("--buffer_size", type=int, default=int(1e6), help="Reply buffer size")
     parser.add_argument("--batch_size", type=int, default=256, help="Minibatch size")
     # Net Params
@@ -35,8 +39,11 @@ def args():
     parser.add_argument("--use_state_norm", type=bool, default=False, help="Trick: state normalization")
     parser.add_argument("--random_steps", type=int, default=1e3,
                         help="Take the random actions in the beginning for the better exploration")
-    parser.add_argument("--update_freq", type=int, default=50, help="Take 50 steps,then update the networks 50 times")
+    parser.add_argument("--update_freq", type=int, default=40, help="Take 50 steps,then update the networks 50 times")
     parser.add_argument("--k_future", type=int, default=4, help="Her k future")
+    parser.add_argument("--sigma", type=int, default=0.2, help="The std of Gaussian noise for exploration")
+    parser.add_argument("--k_update", type=bool, default=2, help="Delayed policy update frequence")
+    parser.add_argument("--task_list", type=list, default=['drawer', 'place', 'reach'], help="task list")
 
     return parser.parse_args()
 
@@ -44,8 +51,8 @@ def args():
 class HERDDPGModel(ModelBase):
     def __init__(self, env, args):
         super().__init__(env, args)
-        self.agent = HERDDPG(env, args)
-        self.model_name = f'{self.agent.agent_name}_{self.args.env_name}_num_{2}_seed_{self.args.seed}'
+        self.agent = IORL(env, args)
+        self.model_name = f'{self.agent.agent_name}_{self.args.env_name}_num_{6}_seed_{self.args.seed}'
         self.load_weights()
 
     def load_weights(self):
@@ -55,37 +62,39 @@ class HERDDPGModel(ModelBase):
         self.agent.actor.load_state_dict(actor_state_dict)
 
     def play(self):
-        total_steps = 0
-        while total_steps < self.args.max_train_steps:
-            env_dict, _ = self.env.reset()  # 重置环境，返回初始状态
-            s = env_dict["observation"]
-            desired_g = env_dict["desired_goal"]
-            while True:
-                total_steps += 1
-                a = self.agent.sample_action(s, desired_g, deterministic=True)  # 选择动作
-                env_dict_, r, terminated, truncated, _ = self.env.step(a)  # 更新环境，返回transition
-                s = env_dict_["observation"].copy()
-                desired_g = env_dict_["desired_goal"].copy()
-                if truncated:
-                    break
+        """ 测试 """
+        success = 0
+        for ep in trange(100):
+            self.env.env.TASK_FLAG = 0
+            obs, info = self.env.reset()
+            for i in range(100):
+                if info['is_drawer_success'] == 1.0:
+                    task = 'place'
+                    self.env.env.TASK_FLAG = 1
+                else:
+                    self.env.env.TASK_FLAG = 0
+                    task = 'drawer'
 
+                a = self.agent.sample_action(obs, task, deterministic=True)
+                obs, r, terminated, truncated, info = self.env.step(a)
+                if info['is_place_success'] == 1.0:
+                    break
+                time.sleep(0.05)
+
+            success += info['is_place_success']
+
+        print(success)
         self.env.close()
 
 
 def make_env(args):
     """ 配置环境 """
-    from robopal.assets.robots.diana_med import DianaGrasp
-
-    env = PickAndPlaceEnv(
-        robot=DianaGrasp(),
-        renderer="viewer",
-        is_render=True,
-        control_freq=10,
-        is_interpolate=False,
-        is_pd=False,
-        jnt_controller='JNTIMP',
+    env = robopal.make(
+        "DrawerBox-v1",
+        render_mode="human"
     )
-    env = GymWrapper(env)
+    env = GoalEnvWrapper(env)
+    
     state_dim = env.observation_space.spaces["observation"].shape[0]
     action_dim = env.action_space.shape[0]
     goal_dim = env.observation_space.spaces["desired_goal"].shape[0]

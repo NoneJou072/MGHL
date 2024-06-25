@@ -1,8 +1,24 @@
-参考
-----
+# Intelligent Redundant Manipulation for Long-Horizon Operations with Multiple Goal-conditioned Hierarchical Learning
 
-* [OpenAI-Spinningup](https://spinningup.openai.com/en/latest/algorithms/sac.html)
-* [Easy-RL (蘑菇书)]()
-* 深度强化学习-王树森
-* [Github:Lizhi-sjtu/DRL-code-pytorch](https://github.com/Lizhi-sjtu/DRL-code-pytorch/blob/main/2.Actor-Critic/README.md)
-* [动手学强化学习](https://hrl.boyuai.com/chapter/2/dqn%E7%AE%97%E6%B3%95)
+## Introduction
+[ [homepage](https://nonejou072.github.io/mghl.html) ]  [paper]
+
+## Reproduction
+### Environment
+* Python 3.8 +
+* pytorch
+* numpy
+* robopal
+* tensorboard
+
+### Run
+
+run the training script:
+```bash
+python MGHL/I2MTP-SAC-DRAWER/train_drawerbox.py
+```
+
+evaluate:
+```bash
+python MGHL/I2MTP-SAC-DRAWER/play.py
+```

@@ -1,12 +1,13 @@
 import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 import argparse
 from copy import deepcopy
 
 import torch
 from torch.utils.tensorboard import SummaryWriter
-
-from robopal.demos.multi_task_manipulation import DrawerCubeEnv
-from robopal.commons.gym_wrapper import GoalEnvWrapper
+import robopal
+from robopal.wrappers import GoalEnvWrapper
 
 from iorl import IORL
 from utils.ModelBase import ModelBase
@@ -188,7 +189,10 @@ class IORLModel(ModelBase):
 
 def make_env(args):
     """ 配置环境 """
-    env = DrawerCubeEnv(render_mode=None)
+    env = robopal.make(
+        "DrawerBox-v1",
+        render_mode=None
+    )
     env = GoalEnvWrapper(env)
 
     state_dim = env.observation_space.spaces["observation"].shape[0]
