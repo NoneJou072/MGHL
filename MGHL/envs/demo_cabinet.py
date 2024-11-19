@@ -34,7 +34,7 @@ class LockedCabinetEnv(ManipulateEnv):
 
         self.max_episode_steps = 50
 
-        self.TASK_FLAG = 0
+        self.TASK_FLAG = 1
 
         self.pos_max_bound = np.array([0.6, 0.25, 0.4])
         self.pos_min_bound = np.array([0.4, -0.25, 0.2])

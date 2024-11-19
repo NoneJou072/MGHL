@@ -88,9 +88,11 @@ class IORL:
         self.training_times = 0
 
         self.batch_size = args.batch_size
-        self.memory_draw = RHERReplayBuffer(capacity=args.buffer_size, k_future=args.k_future, env=env, sub_eps=self.sub_eps)
-        self.memory_place = RHERReplayBuffer(capacity=args.buffer_size, k_future=args.k_future, env=env, sub_eps=self.sub_eps)
         self.memory_reach = RHERReplayBuffer(capacity=args.buffer_size, k_future=args.k_future, env=env, sub_eps=self.sub_eps)
+        self.memory_unlock = RHERReplayBuffer(capacity=args.buffer_size, k_future=args.k_future, env=env, sub_eps=self.sub_eps)
+        self.memory_door = RHERReplayBuffer(capacity=args.buffer_size, k_future=args.k_future, env=env, sub_eps=self.sub_eps)
+        self.memory_drawer = RHERReplayBuffer(capacity=args.buffer_size, k_future=args.k_future, env=env, sub_eps=self.sub_eps)
+        self.memory_place = RHERReplayBuffer(capacity=args.buffer_size, k_future=args.k_future, env=env, sub_eps=self.sub_eps)
 
         self.state_dim = args.state_dim
         self.goal_dim = args.goal_dim
@@ -137,16 +139,28 @@ class IORL:
             else:
                 self.enable_guide = False
                 last_obs['desired_goal'][:3] *= 0
-                if task == 'drawer':
+                if task == 'unlock':
                     last_obs['desired_goal'][6:] *= 0
+                elif task == 'door':
+                    last_obs['desired_goal'][:6] *= 0
+                    last_obs['desired_goal'][9:] *= 0
+                elif task == 'drawer':
+                    last_obs['desired_goal'][:9] *= 0
+                    last_obs['desired_goal'][12:] *= 0
                 elif task == 'place':
-                    last_obs['desired_goal'][3:6] *= 0
+                    last_obs['desired_goal'][:12] *= 0
         else:
             last_obs['desired_goal'][:3] *= 0
-            if task == 'drawer':
+            if task == 'unlock':
                 last_obs['desired_goal'][6:] *= 0
+            elif task == 'door':
+                last_obs['desired_goal'][:6] *= 0
+                last_obs['desired_goal'][9:] *= 0
+            elif task == 'drawer':
+                last_obs['desired_goal'][:9] *= 0
+                last_obs['desired_goal'][12:] *= 0
             elif task == 'place':
-                last_obs['desired_goal'][3:6] *= 0
+                last_obs['desired_goal'][:12] *= 0
 
         with torch.no_grad():
             s = torch.unsqueeze(torch.tensor(last_obs['observation'], dtype=torch.float32), 0).to(self.device)
@@ -159,21 +173,27 @@ class IORL:
         batch_s_1, batch_a_1, batch_s_1_, batch_r_1, batch_g_1 = self.memory_reach.sample(self.batch_size,
                                                                                           device=self.device,
                                                                                           task='reach')
-        batch_s_2, batch_a_2, batch_s_2_, batch_r_2, batch_g_2 = self.memory_draw.sample(self.batch_size,
+        batch_s_2, batch_a_2, batch_s_2_, batch_r_2, batch_g_2 = self.memory_unlock.sample(self.batch_size,
+                                                                                         device=self.device,
+                                                                                         task='unlock')
+        batch_s_3, batch_a_3, batch_s_3_, batch_r_3, batch_g_3 = self.memory_door.sample(self.batch_size,
+                                                                                         device=self.device,
+                                                                                         task='door')
+        batch_s_4, batch_a_4, batch_s_4_, batch_r_4, batch_g_4 = self.memory_drawer.sample(self.batch_size,
                                                                                          device=self.device,
                                                                                          task='drawer')
-        batch_s_3, batch_a_3, batch_s_3_, batch_r_3, batch_g_3 = self.memory_place.sample(self.batch_size,
+        batch_s_5, batch_a_5, batch_s_5_, batch_r_5, batch_g_5 = self.memory_place.sample(self.batch_size,
                                                                                          device=self.device,
                                                                                          task='place')
 
-        batch_s = torch.concatenate((batch_s_1, batch_s_2, batch_s_3))
-        batch_a = torch.concatenate((batch_a_1, batch_a_2, batch_a_3))
-        batch_s_ = torch.concatenate((batch_s_1_, batch_s_2_, batch_s_3_))
-        batch_r = torch.concatenate((batch_r_1, batch_r_2, batch_r_3))
-        batch_g = torch.concatenate((batch_g_1, batch_g_2, batch_g_3))
+        batch_s = torch.concatenate((batch_s_1, batch_s_2, batch_s_3, batch_s_4, batch_s_5))
+        batch_a = torch.concatenate((batch_a_1, batch_a_2, batch_a_3, batch_a_4, batch_a_5))
+        batch_s_ = torch.concatenate((batch_s_1_, batch_s_2_, batch_s_3_, batch_s_4_, batch_s_5_))
+        batch_r = torch.concatenate((batch_r_1, batch_r_2, batch_r_3, batch_r_4, batch_r_5))
+        batch_g = torch.concatenate((batch_g_1, batch_g_2, batch_g_3, batch_g_4, batch_g_5))
 
         # shuffle 
-        indices = np.random.permutation(self.batch_size * 3)
+        indices = np.random.permutation(self.batch_size * 5)
         batch_s = batch_s[indices]
         batch_a = batch_a[indices]
         batch_s_ = batch_s_[indices]

@@ -14,10 +14,10 @@ log_path = os.path.join(local_path, 'log')
 
 
 class ModelBase(object):
-    def __init__(self, env, args: argparse.Namespace):
+    def __init__(self, env, env_eval, args: argparse.Namespace):
         self.args = args
         self.env = env
-        self.env_evaluate = env
+        self.env_evaluate = env_eval
         self.set_seed(args.seed)
 
         self.agent = None

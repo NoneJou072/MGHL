@@ -58,7 +58,7 @@ class RHERReplayBuffer(ReplayBuffer):
             desired_goals[her_indices, :3] = future_ag
             rewards = np.expand_dims(self.env.compute_reward(achieved_goals[:, :3], desired_goals[:, :3], th=self.sub_eps), 1)
             desired_goals[:, 3:] *= 0
-        elif task == 'drawer':
+        elif task == 'unlock':
             future_ag = []
             for epi, f_offset in zip(ep_indices[her_indices], future_t):
                 future_ag.append(dc(self.buffer[epi].buffer[f_offset][4][3:6]))
@@ -67,14 +67,32 @@ class RHERReplayBuffer(ReplayBuffer):
             rewards = np.expand_dims(self.env.compute_reward(achieved_goals[:, 3:6], desired_goals[:, 3:6], th=0.02), 1)
             desired_goals[:, :3] *= 0
             desired_goals[:, 6:] *= 0
+        elif task == 'door':
+            future_ag = []
+            for epi, f_offset in zip(ep_indices[her_indices], future_t):
+                future_ag.append(dc(self.buffer[epi].buffer[f_offset][4][3:9]))
+            future_ag = np.vstack(future_ag)
+            desired_goals[her_indices, 3:9] = future_ag
+            rewards = np.expand_dims(self.env.compute_reward(achieved_goals[:, 3:9], desired_goals[:, 3:9], th=0.02), 1)
+            desired_goals[:, :6] *= 0
+            desired_goals[:, 9:] *= 0
+        elif task == 'drawer':
+            future_ag = []
+            for epi, f_offset in zip(ep_indices[her_indices], future_t):
+                future_ag.append(dc(self.buffer[epi].buffer[f_offset][4][3:12]))
+            future_ag = np.vstack(future_ag)
+            desired_goals[her_indices, 3:12] = future_ag
+            rewards = np.expand_dims(self.env.compute_reward(achieved_goals[:, 3:12], desired_goals[:, 3:12], th=0.02), 1)
+            desired_goals[:, :9] *= 0
+            desired_goals[:, 12:] *= 0
         elif task == 'place':
             future_ag = []
             for epi, f_offset in zip(ep_indices[her_indices], future_t):
-                future_ag.append(dc(self.buffer[epi].buffer[f_offset][4][3:]))
+                future_ag.append(dc(self.buffer[epi].buffer[f_offset][4][3:15]))
             future_ag = np.vstack(future_ag)
-            desired_goals[her_indices, 3:] = future_ag
-            rewards = np.expand_dims(self.env.compute_reward(achieved_goals[:, 3:], desired_goals[:, 3:], th=0.02), 1)
-            desired_goals[:, :6] *= 0
+            desired_goals[her_indices, 3:15] = future_ag
+            rewards = np.expand_dims(self.env.compute_reward(achieved_goals[:, 3:15], desired_goals[:, 3:15], th=0.02), 1)
+            desired_goals[:, :12] *= 0
 
         s = torch.tensor(states, dtype=torch.float).to(device)
         a = torch.tensor(actions, dtype=torch.float).to(device)
